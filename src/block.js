@@ -79,13 +79,11 @@ class Block {
             let decodedBodyJSON = JSON.parse(decodedBody);
 
             // Resolve with the data if the object isn't the Genesis block
-            if (decodedBodyJSON.height > 0) {
-                resolve(encodedData);
-            } else {
-                resolve("This is the genesis block.");
+            if (self.height > 0) {
+                resolve(decodedBodyJSON);
+            } else if (self.height !== 0){
+                reject(Error("Block data did not validate."));
             }
-
-            reject(Error("Block data did not validate."));
         });
     }
 

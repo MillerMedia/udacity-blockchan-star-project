@@ -1,16 +1,17 @@
 /**
  *                          Blockchain Class
  *  The Blockchain class contain the basics functions to create your own private blockchain
- *  It uses libraries like `crypto-js` to create the hashes for each block and `bitcoinjs-message` 
+ *  It uses libraries like `crypto-js` to create the hashes for each block and `bitcoinjs-message`
  *  to verify a message signature. The chain is stored in the array
  *  `this.chain = [];`. Of course each time you run the application the chain will be empty because and array
  *  isn't a persisten storage method.
- *  
+ *
  */
 
 const SHA256 = require('crypto-js/sha256');
 const BlockClass = require('./block.js');
 const bitcoinMessage = require('bitcoinjs-message');
+const {Block} = require("./block");
 
 class Blockchain {
 
@@ -97,7 +98,7 @@ class Blockchain {
      */
     requestMessageOwnershipVerification(address) {
         return new Promise((resolve) => {
-            resolve(`address:${new Date().getTime().toString().slice(0,-3)}:starRegistry`);
+            resolve(`${address}:${new Date().getTime().toString().slice(0,-3)}:starRegistry`);
         });
     }
 
@@ -133,8 +134,8 @@ class Blockchain {
 
             bitcoinMessage.verify(message, address, signature);
 
-            let block = new Block(star);
-            blockchain._addBlock(block);
+            let block = new Block(`{address:${address}, signature:${signature}, message:${message}, star:${star}}`);
+            self._addBlock(block);
 
             resolve(block);
         });
@@ -187,7 +188,21 @@ class Blockchain {
         let self = this;
         let stars = [];
         return new Promise((resolve, reject) => {
-            let stars = self.chain.filter()
+            //stars = self.chain.filter(p => p.getBData().address === address);
+            //print("yes");
+            //print(stars);
+            stars = stars.map(function(e) {
+                e.body = e.getBData();
+                return e;
+            });
+
+            print(stars);
+
+            if(stars.length===0){
+                reject(Error(`No stars owned by wallet address ${address}.`));
+            }
+
+            resolve(stars);
         });
     }
 
@@ -201,7 +216,14 @@ class Blockchain {
         let self = this;
         let errorLog = [];
         return new Promise(async (resolve, reject) => {
-            
+
+            let blocks = self.chain.filter(function (e) {
+                e.validate().catch(function(error){
+                    errorLog.push(error);
+                });
+            });
+
+            resolve(errorLog);
         });
     }
 
