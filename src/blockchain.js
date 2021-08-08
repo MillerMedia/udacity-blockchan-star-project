@@ -64,13 +64,32 @@ class Blockchain {
     _addBlock(block) {
         let self = this;
         return new Promise(async (resolve, reject) => {
-           
+            let original_length = self.chain.length;
+
+            if(self.chain.length > 0){
+                block.previousBlockHash = self.chain[self.chain.length-1].hash
+            }
+
+            block.height = self.chain.length;
+
+            block.time = new Date().getTime().toString().slice(0,-3);
+
+            block.hash = SHA256(JSON.stringify(block)).toString();
+
+            self.chain.push(block);
+
+            // Confirm that the chain has increased in length
+            if(original_length < self.chain.length){
+                resolve(block);
+            }
+
+            reject(Error("Block did not get successfully added."));
         });
     }
 
     /**
      * The requestMessageOwnershipVerification(address) method
-     * will allow you  to request a message that you will use to
+     * will allow you to request a message that you will use to
      * sign it with your Bitcoin Wallet (Electrum or Bitcoin Core)
      * This is the first step before submit your Block.
      * The method return a Promise that will resolve with the message to be signed
@@ -78,7 +97,7 @@ class Blockchain {
      */
     requestMessageOwnershipVerification(address) {
         return new Promise((resolve) => {
-            
+            resolve(`address:${new Date().getTime().toString().slice(0,-3)}:starRegistry`);
         });
     }
 
@@ -91,7 +110,7 @@ class Blockchain {
      * 1. Get the time from the message sent as a parameter example: `parseInt(message.split(':')[1])`
      * 2. Get the current time: `let currentTime = parseInt(new Date().getTime().toString().slice(0, -3));`
      * 3. Check if the time elapsed is less than 5 minutes
-     * 4. Veify the message with wallet address and signature: `bitcoinMessage.verify(message, address, signature)`
+     * 4. Verify the message with wallet address and signature: `bitcoinMessage.verify(message, address, signature)`
      * 5. Create the block and add it to the chain
      * 6. Resolve with the block added.
      * @param {*} address 
@@ -102,7 +121,22 @@ class Blockchain {
     submitStar(address, message, signature, star) {
         let self = this;
         return new Promise(async (resolve, reject) => {
-            
+            let messageTime = parseInt(message.split(':')[1]);
+            let currentTime = parseInt(new Date().getTime().toString().slice(0, -3));
+
+            // First convert to seconds (divide by 1000) and then to minutes (divide by 60)
+            let timeDifferenceInMinutes = ((currentTime - messageTime) / 1000) / 60
+
+            if(timeDifferenceInMinutes > 5){
+                reject(Error("Block not added to chain within the 5 minute time limit."));
+            }
+
+            bitcoinMessage.verify(message, address, signature);
+
+            let block = new Block(star);
+            blockchain._addBlock(block);
+
+            resolve(block);
         });
     }
 
@@ -115,7 +149,13 @@ class Blockchain {
     getBlockByHash(hash) {
         let self = this;
         return new Promise((resolve, reject) => {
-           
+            let block = self.chain.filter(p => p.hash === hash)[0];
+
+            if(block) {
+                resolve(block);
+            } else {
+                reject(Error(`Block with hash ${hash} not found on chain.`));
+            }
         });
     }
 
@@ -128,10 +168,11 @@ class Blockchain {
         let self = this;
         return new Promise((resolve, reject) => {
             let block = self.chain.filter(p => p.height === height)[0];
+
             if(block){
                 resolve(block);
             } else {
-                resolve(null);
+               reject(Error(`Block with height ${height} not found on chain.`));
             }
         });
     }
@@ -146,7 +187,7 @@ class Blockchain {
         let self = this;
         let stars = [];
         return new Promise((resolve, reject) => {
-            
+            let stars = self.chain.filter()
         });
     }
 
