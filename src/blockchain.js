@@ -142,10 +142,10 @@ class Blockchain {
                 reject(Error("Block did not verify."));
             }
 
-            let block = new Block(`{"address":"${address}", "signature":"${signature}", "message":"${message}", "star":${JSON.stringify(star).toString('hex')}}`);
+            let block = new Block(`{"user_address":"${address}", "star":${JSON.stringify(star).toString('hex')}}`);
 
             // Add the block owner to the data root so it doesn't need to be decoded to filter later
-            block.owner = address
+            block.user_address = address
             self._addBlock(block);
 
             resolve(block);
@@ -200,15 +200,14 @@ class Blockchain {
         let stars = [];
 
         return new Promise((resolve, reject) => {
-            stars = self.chain.filter(p => p.owner === address);
+            stars = self.chain.filter(p => p.user_address === address);
 
             if(stars.length===0){
                 reject(Error(`No stars owned by wallet address ${address}.`));
             }
 
-            stars.map(function(e){
-                e.body = JSON.parse(JSON.parse(hex2ascii(e.body)));
-                return e;
+            stars = stars.map(function(e){
+                return JSON.parse(JSON.parse(hex2ascii(e.body)));
             });
 
             resolve(stars);
@@ -225,9 +224,9 @@ class Blockchain {
         let self = this;
         let errorLog = [];
         return new Promise(async (resolve, reject) => {
-            let blocks = self.chain.filter(function (e) {
-                if(e.height > 0) {
-                    e.validate().catch(function (error) {
+            let blocks = self.chain.filter(async function (e) {
+                if (e.height > 0) {
+                    let validate_check = await e.validate().catch(function (error) {
                         errorLog.push(error);
                     });
                 }
