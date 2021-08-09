@@ -42,17 +42,12 @@ class Block {
             let currentBlockHash = self.hash;
 
             // Recalculate the hash of the Block
-            self.hash = null;
-            self.hash = SHA256(JSON.stringify(self)).toString();
-
-            // Comparing if the hashes changed
-            let hash_unchanged = currentBlockHash === self.hash;
+            // Spread operator as referenced here: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax#syntax
+            // This was provided in my last review
+            const newHash = SHA256(JSON.stringify({...this, hash:null})).toString();
 
             // Returning the Block is not valid
-            if(!hash_unchanged){
-                // Need to reassign the hash if it fails
-                self.hash = currentBlockHash;
-
+            if(!self.hash === newHash){
                 reject(Error("Block is not valid."));
             }
             
@@ -71,24 +66,12 @@ class Block {
      *     or Reject with an error.
      */
     getBData() {
-        let self = this;
-        return new Promise((resolve, reject) => {
-            // Getting the encoded data saved in the Block
-            let encodedData = self.body;
-
-            // Decoding the data to retrieve the JSON representation of the object
-            let decodedBody = hex2ascii(encodedData);
-
-            // Parse the data to an object to be retrieve.
-            let decodedBodyJSON = JSON.parse(decodedBody);
-
-            // Resolve with the data if the object isn't the Genesis block
-            if (self.height > 0) {
-                resolve(decodedBodyJSON);
-            } else if (self.height !== 0){
-                reject(Error("Block data did not validate."));
-            }
-        });
+        // Resolve with the data if the object isn't the Genesis block
+        if (this.height > 0) {
+            resolve(JSON.parse(hex2ascii(this.body)));
+        } else if (this.height !== 0){
+            reject(Error("Block data did not validate."));
+        }
     }
 
 }
