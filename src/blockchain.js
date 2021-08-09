@@ -12,6 +12,7 @@ const SHA256 = require('crypto-js/sha256');
 const BlockClass = require('./block.js');
 const bitcoinMessage = require('bitcoinjs-message');
 const {Block} = require("./block");
+const hex2ascii = require("hex2ascii");
 
 class Blockchain {
 
@@ -72,19 +73,24 @@ class Blockchain {
             }
 
             block.height = self.chain.length;
-
             block.time = new Date().getTime().toString().slice(0,-3);
-
             block.hash = SHA256(JSON.stringify(block)).toString();
 
-            self.chain.push(block);
+            // First validate the chain
+            self.validateChain().then(function(errorLog){
+               if(errorLog.length > 0){
+                   reject(Error(errorLog));
+               } else {
+                   self.chain.push(block);
 
-            // Confirm that the chain has increased in length
-            if(original_length < self.chain.length){
-                resolve(block);
-            }
+                   // Confirm that the chain has increased in length
+                   if(original_length < self.chain.length){
+                       resolve(block);
+                   }
 
-            reject(Error("Block did not get successfully added."));
+                   reject(Error("Block did not get successfully added."));
+               }
+            });
         });
     }
 
@@ -132,9 +138,14 @@ class Blockchain {
                 reject(Error("Block not added to chain within the 5 minute time limit."));
             }
 
-            bitcoinMessage.verify(message, address, signature);
+            if(!bitcoinMessage.verify(message, address, signature)){
+                reject(Error("Block did not verify."));
+            }
 
-            let block = new Block(`{address:${address}, signature:${signature}, message:${message}, star:${star}}`);
+            let block = new Block(`{"address":"${address}", "signature":"${signature}", "message":"${message}", "star":${JSON.stringify(star).toString('hex')}}`);
+
+            // Add the block owner to the data root so it doesn't need to be decoded to filter later
+            block.owner = address
             self._addBlock(block);
 
             resolve(block);
@@ -187,20 +198,18 @@ class Blockchain {
     getStarsByWalletAddress (address) {
         let self = this;
         let stars = [];
-        return new Promise((resolve, reject) => {
-            //stars = self.chain.filter(p => p.getBData().address === address);
-            //print("yes");
-            //print(stars);
-            stars = stars.map(function(e) {
-                e.body = e.getBData();
-                return e;
-            });
 
-            print(stars);
+        return new Promise((resolve, reject) => {
+            stars = self.chain.filter(p => p.owner === address);
 
             if(stars.length===0){
                 reject(Error(`No stars owned by wallet address ${address}.`));
             }
+
+            stars.map(function(e){
+                e.body = JSON.parse(JSON.parse(hex2ascii(e.body)));
+                return e;
+            });
 
             resolve(stars);
         });
@@ -216,11 +225,12 @@ class Blockchain {
         let self = this;
         let errorLog = [];
         return new Promise(async (resolve, reject) => {
-
             let blocks = self.chain.filter(function (e) {
-                e.validate().catch(function(error){
-                    errorLog.push(error);
-                });
+                if(e.height > 0) {
+                    e.validate().catch(function (error) {
+                        errorLog.push(error);
+                    });
+                }
             });
 
             resolve(errorLog);

@@ -21,6 +21,7 @@ class Block {
 		this.body = Buffer.from(JSON.stringify(data)).toString('hex');   // Will contain the transactions stored in the block, by default it will encode the data
 		this.time = 0;                                              // Timestamp for the Block creation
 		this.previousBlockHash = null;                              // Reference to the previous Block Hash
+        this.owner = null;
     }
     
     /**
@@ -40,15 +41,19 @@ class Block {
         return new Promise((resolve, reject) => {
             // Save in auxiliary variable the current block hash
             let currentBlockHash = self.hash;
-                                            
+
             // Recalculate the hash of the Block
-            let recalculatedHash = SHA256(JSON.stringify(self)).toString();
+            self.hash = null;
+            self.hash = SHA256(JSON.stringify(self)).toString();
 
             // Comparing if the hashes changed
-            let hash_unchanged = currentBlockHash === recalculatedHash;
+            let hash_unchanged = currentBlockHash === self.hash;
 
             // Returning the Block is not valid
             if(!hash_unchanged){
+                // Need to reassign the hash if it fails
+                self.hash = currentBlockHash;
+
                 reject(Error("Block is not valid."));
             }
             
